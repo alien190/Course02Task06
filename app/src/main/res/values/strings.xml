@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Course02Task06</string>
+    <string name="et_url_hint">Введите URL изображения для загрузки</string>
+    <string name="bt_download">Выполнить загрузку</string>
+    <string name="bt_show_image">Показать картинку</string>
+    <string name="add_perm_later">Вы можете дать разрешение в настройка устройства</string>
+    <string name="ad_ok">Понятно</string>
+    <string name="ad_rationale">Пожалуйста, дайте разрешение на сохранение файлов. Без разрешения невозможно сохранить изображение</string>
+    <string name="download_error_empty">Ошибка: пустая ссылка для загрузки</string>
+    <string name="download_error_not_url">Ошибка: введенный текст не является ссылкой</string>
+    <string name="download_error_file_type">Ошибка: введенный текст не содержит ссылку на файл типа jpeg/png/bmp</string>
+</resources>
