@@ -1,9 +1,18 @@
 package com.example.ivanovnv.course02task06;
 
 import android.Manifest;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AlertDialog;
@@ -13,8 +22,10 @@ import android.view.View;
 import android.webkit.URLUtil;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Toast;
 
+import java.io.File;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
@@ -27,6 +38,11 @@ public class MainActivity extends AppCompatActivity {
                                                                     add("jpeg"); 
                                                                     add("png"); 
                                                                     add("bmp");}};
+    private DownloadManager mDownloadManager;
+    private long refid;
+    private Button mShowButton;
+    private String mFileName;
+    private ImageView mImageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,17 +53,19 @@ public class MainActivity extends AppCompatActivity {
 
         mStartDownloadButton = findViewById(R.id.bt_download);
         mUrlEditText = findViewById(R.id.et_url);
+        mDownloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        mShowButton = findViewById(R.id.bt_show_image);
+        mImageView = findViewById(R.id.iv_image);
 
     }
 
-    private void init() {
-
-    }
-
-    private void requestRuntimePermissionIfNeeded() {
+    private boolean requestRuntimePermissionIfNeeded() {
         if (!isPermissionGranted()) {
-                requestRuntimePermission();
-            }
+            requestRuntimePermission();
+            return false;
+        } else {
+            return true;
+        }
     }
 
     private void requestRuntimePermission() {
@@ -58,12 +76,14 @@ public class MainActivity extends AppCompatActivity {
                     .setPositiveButton(getString(R.string.ad_ok), new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            ActivityCompat.requestPermissions(MainActivity.this, new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE);
+                            ActivityCompat.requestPermissions(MainActivity.this,
+                                    new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE);
                         }
                     })
                     .show();
         } else {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE);
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CODE);
         }
     }
 
@@ -83,9 +103,9 @@ public class MainActivity extends AppCompatActivity {
         if(grantResults.length != 1) return;
 
         if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            //mIsPermissionGrantedIfNeeded = true;
+           // checkUrlAndDownload(mUrlEditText.getText().toString());
         } else {
-            new AlertDialog.Builder(this)
+             new AlertDialog.Builder(this)
                     .setMessage(R.string.add_perm_later)
                     .setPositiveButton(getString(R.string.ad_ok), null)
                     .show();
@@ -99,10 +119,29 @@ public class MainActivity extends AppCompatActivity {
         mStartDownloadButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                checkUrlAndDownload(mUrlEditText.getText().toString());
+                if(requestRuntimePermissionIfNeeded()) {
+                    checkUrlAndDownload(mUrlEditText.getText().toString());
+                }
             }
         });
 
+        registerReceiver(mDownloadBroadcastReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+
+        mShowButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loadImageFileToImageView();
+            }
+        });
+    }
+
+    private void loadImageFileToImageView() {
+        File imgFile = new File(Environment.getExternalStorageDirectory() + "/" + Environment.DIRECTORY_DOWNLOADS + "/" + mFileName);
+
+        if (imgFile.exists()) {
+            Bitmap bitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
+            mImageView.setImageBitmap(bitmap);
+        }
     }
 
     private void checkUrlAndDownload(String string) {
@@ -123,13 +162,56 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void downloadFile(String string) {
-        
+        Uri uri = Uri.parse(string);
+        DownloadManager.Request request = new DownloadManager.Request(uri);
+
+        mFileName = getFileNameFromURL(string);
+
+        request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_MOBILE | DownloadManager.Request.NETWORK_WIFI)
+                .setAllowedOverRoaming(false)
+                .setDescription("Загрузка изображения")
+                .setTitle("Загрузка изображения")
+                .setVisibleInDownloadsUi(true)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, mFileName);
+
+        refid = mDownloadManager.enqueue(request);
     }
+
+    private String getFileNameFromURL (String url) {
+        if (url.contains("/")) return url.substring(url.lastIndexOf("/") + 1);
+        else return "pic.jpg";
+    }
+
 
     @Override
     protected void onStop() {
         super.onStop();
 
         mStartDownloadButton.setOnClickListener(null);
+        mShowButton.setOnClickListener(null);
+        unregisterReceiver(mDownloadBroadcastReceiver);
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        mStartDownloadButton = null;
+        mUrlEditText = null;
+        mDownloadManager = null;
+        mShowButton = null;
+        mImageView = null;
+
+
+    }
+
+    BroadcastReceiver mDownloadBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1) == refid) {
+                mShowButton.setEnabled(true);
+                Toast.makeText(context, R.string.download_complete, Toast.LENGTH_SHORT).show();
+            }
+        }
+    };
 }
