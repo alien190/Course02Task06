@@ -136,12 +136,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadImageFileToImageView() {
-        File imgFile = new File(Environment.getExternalStorageDirectory() + "/" + Environment.DIRECTORY_DOWNLOADS + "/" + mFileName);
+      /*  File imgFile = new File(Environment.getExternalStorageDirectory() + "/" + Environment.DIRECTORY_DOWNLOADS + "/" + mFileName);
 
         if (imgFile.exists()) {
             Bitmap bitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
             mImageView.setImageBitmap(bitmap);
-        }
+        }*/
+
+      mImageView.setImageURI(mDownloadManager.getUriForDownloadedFile(refid));
     }
 
     private void checkUrlAndDownload(String string) {
@@ -165,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
         Uri uri = Uri.parse(string);
         DownloadManager.Request request = new DownloadManager.Request(uri);
 
-        mFileName = getFileNameFromURL(string);
+        mFileName = (new File(string)).getName();
 
         request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_MOBILE | DownloadManager.Request.NETWORK_WIFI)
                 .setAllowedOverRoaming(false)
@@ -175,11 +177,6 @@ public class MainActivity extends AppCompatActivity {
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, mFileName);
 
         refid = mDownloadManager.enqueue(request);
-    }
-
-    private String getFileNameFromURL (String url) {
-        if (url.contains("/")) return url.substring(url.lastIndexOf("/") + 1);
-        else return "pic.jpg";
     }
 
 
